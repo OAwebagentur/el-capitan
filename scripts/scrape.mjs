@@ -4,7 +4,7 @@
 // recursively for url()/@import refs, rewrites the el-capitan.eu domain to
 // root-relative, and writes content/pages.json = { "<route>": "<full html>" }.
 
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -201,6 +201,97 @@ async function saveAsset(absUrl) {
   }
 }
 
+// Some runtime assets are NEVER referenced literally in the HTML and so are
+// missed by the crawl above, which breaks interactive logic in the mirror:
+//   1. Elementor / Elementor-Pro webpack CHUNKS — their hashed filenames live in
+//      the webpack runtime JS and are requested at runtime (form handler,
+//      nested-accordion, nested-tabs, nav-menu, gallery, lightbox, popup, ...).
+//   2. Google Fonts .woff2 — Elementor's google-fonts CSS points at a dead
+//      third-party CDN (general.cloudmeshsolutions.com); the real files exist on
+//      el-capitan.eu at the same path, so we pull them from there and rewrite the
+//      CSS to root-relative local paths.
+async function harvestExtras() {
+  log("Harvesting runtime-only assets (webpack chunks + cross-domain fonts)...");
+
+  // Chunk filenames come in two shapes:
+  //   named:    "form.71055747203b48a65a24.bundle.min.js"
+  //   nameless: "397f2d183c19202777d6.bundle.min.js"
+  const chunkOf = (text) => {
+    const set = new Set();
+    for (const re of [
+      /[a-z][a-z0-9_-]*\.[a-f0-9]{20}\.bundle\.min\.js/gi,
+      /(?<![a-z0-9_.-])[a-f0-9]{20}\.bundle\.min\.js/gi,
+    ]) {
+      let m;
+      while ((m = re.exec(text))) set.add(m[0]);
+    }
+    return [...set];
+  };
+
+  const runtimes = [
+    ["/wp-content/plugins/elementor/assets/js/webpack.runtime.min.js", "/wp-content/plugins/elementor/assets/js/"],
+    ["/wp-content/plugins/elementor-pro/assets/js/webpack-pro.runtime.min.js", "/wp-content/plugins/elementor-pro/assets/js/"],
+  ];
+  for (const [runtime, base] of runtimes) {
+    try {
+      const txt = await readFile(join(PUBLIC, runtime), "utf8");
+      for (const name of chunkOf(txt)) queueAsset(ORIGIN + base + name);
+    } catch {}
+  }
+
+  // Standalone libs + conditional CSS loaded on demand by elementor frontend.min.js.
+  for (const p of [
+    "/wp-content/plugins/elementor/assets/lib/dialog/dialog.min.js",
+    "/wp-content/plugins/elementor/assets/lib/share-link/share-link.min.js",
+    "/wp-content/plugins/elementor/assets/css/conditionals/dialog.min.css",
+    "/wp-content/plugins/elementor/assets/css/conditionals/lightbox.min.css",
+  ]) {
+    queueAsset(ORIGIN + p);
+  }
+
+  // Download everything just queued.
+  let pass = 0;
+  while (pass < 4) {
+    pass++;
+    const pending = [...assetSet].filter((u) => !downloadedAssets.has(u));
+    if (!pending.length) break;
+    const CONC = 8;
+    for (let i = 0; i < pending.length; i += CONC) {
+      await Promise.all(pending.slice(i, i + CONC).map(saveAsset));
+    }
+  }
+
+  // Localise cross-domain Google Fonts referenced by the google-fonts CSS.
+  const fontCssDir = join(PUBLIC, "wp-content/uploads/elementor/google-fonts/css");
+  let cssFiles = [];
+  try {
+    cssFiles = (await readdir(fontCssDir)).filter((f) => f.endsWith(".css"));
+  } catch {}
+  const reFontUrl = /url\((https?:\/\/[^)'"]+\.woff2?)\)/gi;
+  for (const f of cssFiles) {
+    const cssPath = join(fontCssDir, f);
+    let css = await readFile(cssPath, "utf8");
+    const urls = new Set();
+    let m;
+    while ((m = reFontUrl.exec(css))) urls.add(m[1]);
+    for (const u of urls) {
+      const localPath = "/" + new URL(u).pathname.replace(/^\/+/, "");
+      const dest = join(PUBLIC, localPath);
+      if (!existsSync(dest)) {
+        // The dead CDN 404s; the real font lives on el-capitan.eu at the same path.
+        const buf = await fetchRetry(ORIGIN + localPath, { binary: true });
+        if (buf != null) {
+          await mkdir(dirname(dest), { recursive: true });
+          await writeFile(dest, buf);
+        }
+      }
+      css = css.split(u).join(localPath); // rewrite absolute -> root-relative
+    }
+    await writeFile(cssPath, css, "utf8");
+  }
+  log("Harvest complete.");
+}
+
 async function main() {
   pageQueue.push("/");
   // BFS crawl
@@ -226,6 +317,9 @@ async function main() {
     }
   }
   log(`Downloaded ${downloadedAssets.size} assets.`);
+
+  // Runtime-only assets the HTML never references literally (see harvestExtras).
+  await harvestExtras();
 
   // write pages.json
   await mkdir(join(ROOT, "content"), { recursive: true });
