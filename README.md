@@ -1,6 +1,6 @@
 # El Capitan – Next.js Clone
 
-Pixel-genauer 1:1-Clone von [el-capitan.eu](https://el-capitan.eu/) (El Capitan Hotel – Hotel Restaurant Lounge) als Next.js-Projekt.
+Pixel-genauer 1:1-Clone von [el-capitan.net](https://el-capitan.net/) (El Capitan Hotel – Hotel Restaurant Lounge) als Next.js-Projekt.
 
 ## Aufbau
 

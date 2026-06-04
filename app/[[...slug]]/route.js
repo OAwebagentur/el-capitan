@@ -7,7 +7,7 @@ const pages = JSON.parse(
   readFileSync(join(process.cwd(), "content", "pages.json"), "utf8")
 );
 
-// Serve the mirrored el-capitan.eu documents byte-for-byte. Static assets in
+// Serve the mirrored el-capitan.net documents byte-for-byte. Static assets in
 // public/ (CSS, JS, images, fonts) are served by Next before this handler runs,
 // so this only ever handles HTML page routes.
 export const dynamic = "force-static";

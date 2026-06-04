@@ -2,7 +2,7 @@
   "name": "el-capitan-clone",
   "version": "1.0.0",
   "private": true,
-  "description": "1:1 Next.js clone of el-capitan.eu (El Capitan Hotel – Hotel Restaurant Lounge)",
+  "description": "1:1 Next.js clone of el-capitan.net (El Capitan Hotel – Hotel Restaurant Lounge)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

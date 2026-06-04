@@ -1,15 +1,15 @@
 // El Capitan – Full-site mirror scraper.
-// Crawls all internal pages of el-capitan.eu, downloads every same-domain asset
+// Crawls all internal pages of el-capitan.net, downloads every same-domain asset
 // (css/js/img/font/...) into public/ preserving the original path, parses CSS
-// recursively for url()/@import refs, rewrites the el-capitan.eu domain to
+// recursively for url()/@import refs, rewrites the el-capitan.net domain to
 // root-relative, and writes content/pages.json = { "<route>": "<full html>" }.
 
 import { mkdir, writeFile, readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-const ORIGIN = "https://el-capitan.eu";
-const HOST = "el-capitan.eu";
+const ORIGIN = "https://el-capitan.net";
+const HOST = "el-capitan.net";
 const ROOT = process.cwd();
 const PUBLIC = join(ROOT, "public");
 const UA =
@@ -21,7 +21,7 @@ const ASSET_EXT =
 const visitedPages = new Set();
 const pageQueue = [];
 const pages = {}; // route -> html
-const assetSet = new Set(); // absolute urls (el-capitan.eu) to download
+const assetSet = new Set(); // absolute urls (el-capitan.net) to download
 const downloadedAssets = new Set();
 const cssToParse = []; // {url, localPath}
 
@@ -89,11 +89,11 @@ function isSameHostUrl(s) {
   );
 }
 
-// Extract all el-capitan.eu (absolute or protocol-relative) asset URLs + relative ones from a text blob.
+// Extract all el-capitan.net (absolute or protocol-relative) asset URLs + relative ones from a text blob.
 function collectAssetUrls(text, baseUrl) {
   const found = new Set();
   // absolute / protocol-relative urls
-  const reAbs = /(https?:)?\/\/el-capitan\.eu\/[^\s"'()<>\\]+/gi;
+  const reAbs = /(https?:)?\/\/el-capitan\.net\/[^\s"'()<>\\]+/gi;
   let m;
   while ((m = reAbs.exec(text))) {
     found.add(m[0]);
@@ -106,7 +106,7 @@ function absolutize(u) {
   return u;
 }
 
-// Map an el-capitan.eu URL to a local public path (strip domain + query).
+// Map an el-capitan.net URL to a local public path (strip domain + query).
 function urlToLocalPath(absUrl) {
   const u = new URL(absolutize(absUrl));
   let p = decodeURIComponent(u.pathname);
@@ -123,14 +123,14 @@ function queueAsset(absUrl) {
   assetSet.add(clean);
 }
 
-// Rewrite el-capitan.eu domain -> root-relative in any text.
+// Rewrite el-capitan.net domain -> root-relative in any text.
 function rewriteDomain(text) {
   return text
-    .replaceAll("https://el-capitan.eu", "")
-    .replaceAll("http://el-capitan.eu", "")
-    .replaceAll("https:\\/\\/el-capitan.eu", "")
-    .replaceAll("http:\\/\\/el-capitan.eu", "")
-    .replaceAll("//el-capitan.eu", "");
+    .replaceAll("https://el-capitan.net", "")
+    .replaceAll("http://el-capitan.net", "")
+    .replaceAll("https:\\/\\/el-capitan.net", "")
+    .replaceAll("http:\\/\\/el-capitan.net", "")
+    .replaceAll("//el-capitan.net", "");
 }
 
 async function crawlPage(route) {
@@ -208,7 +208,7 @@ async function saveAsset(absUrl) {
 //      nested-accordion, nested-tabs, nav-menu, gallery, lightbox, popup, ...).
 //   2. Google Fonts .woff2 — Elementor's google-fonts CSS points at a dead
 //      third-party CDN (general.cloudmeshsolutions.com); the real files exist on
-//      el-capitan.eu at the same path, so we pull them from there and rewrite the
+//      el-capitan.net at the same path, so we pull them from there and rewrite the
 //      CSS to root-relative local paths.
 async function harvestExtras() {
   log("Harvesting runtime-only assets (webpack chunks + cross-domain fonts)...");
@@ -278,7 +278,7 @@ async function harvestExtras() {
       const localPath = "/" + new URL(u).pathname.replace(/^\/+/, "");
       const dest = join(PUBLIC, localPath);
       if (!existsSync(dest)) {
-        // The dead CDN 404s; the real font lives on el-capitan.eu at the same path.
+        // The dead CDN 404s; the real font lives on el-capitan.net at the same path.
         const buf = await fetchRetry(ORIGIN + localPath, { binary: true });
         if (buf != null) {
           await mkdir(dirname(dest), { recursive: true });

@@ -1,7 +1,7 @@
-// Targeted, ADDITIVE fixer for the el-capitan.eu mirror.
+// Targeted, ADDITIVE fixer for the el-capitan.net mirror.
 //
 // The base scraper (scripts/scrape.mjs) only downloads assets whose literal
-// el-capitan.eu URL appears in the HTML/CSS. Two classes of runtime assets are
+// el-capitan.net URL appears in the HTML/CSS. Two classes of runtime assets are
 // therefore missed, which breaks interactive logic in the local mirror:
 //
 //   1. Elementor / Elementor-Pro webpack CHUNKS. Their hashed filenames live in
@@ -10,7 +10,7 @@
 //      Missing -> 404 -> the booking/contact form, accordions, mobile menu,
 //      galleries and lightbox silently do nothing.
 //   2. Google Fonts .woff2 files, which Elementor serves from a THIRD-PARTY host
-//      (general.cloudmeshsolutions.com), not el-capitan.eu.
+//      (general.cloudmeshsolutions.com), not el-capitan.net.
 //
 // This script downloads only what's missing and rewrites the google-fonts CSS to
 // local paths. It does NOT touch any other CSS (e.g. the user's edited post-5.css)
@@ -20,7 +20,7 @@ import { mkdir, writeFile, readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-const ORIGIN = "https://el-capitan.eu";
+const ORIGIN = "https://el-capitan.net";
 const ROOT = process.cwd();
 const PUBLIC = join(ROOT, "public");
 const UA =
