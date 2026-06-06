@@ -1,14 +1,18 @@
 /*
  * Buchungsformular -> /api/buchung/
  *
- * Die gespiegelte Seite enthaelt ein Elementor-Formular, das urspruenglich an
- * die WordPress-"admin-ajax.php" gepostet haette. Die gibt es hier nicht mehr,
- * darum faengt dieses Skript das Absenden ab und schickt die Daten an unsere
- * eigene Next.js-API, die per Nodemailer eine E-Mail an das Hotel verschickt.
+ * Die gespiegelte Seite enthaelt ein Elementor-Pro-Formular, das urspruenglich
+ * an die WordPress-"admin-ajax.php" gepostet haette. Die gibt es hier nicht
+ * mehr, darum faengt dieses Skript das Absenden ab und schickt die Daten an
+ * unsere eigene Next.js-API, die per Nodemailer eine E-Mail an das Hotel
+ * verschickt.
  *
- * Das Abfangen passiert in der Capture-Phase auf `document`: dadurch laeuft es
- * VOR dem Submit-Handler, den Elementor direkt am <form> registriert, und
- * stoppt dessen (ins Leere laufenden) AJAX-Aufruf zuverlaessig.
+ * WICHTIG: Elementor Pro sendet das Formular nicht ueber ein natives
+ * `submit`-Event, sondern faengt den KLICK auf den Submit-Button ab
+ * (preventDefault) und ruft seinen AJAX direkt auf. Ein reiner
+ * `submit`-Listener wird dadurch nie ausgeloest. Deshalb fangen wir
+ * zusaetzlich den Button-Klick in der Capture-Phase ab (laeuft VOR Elementors
+ * Klick-Handler). Der `submit`-Listener bleibt fuer die Enter-Taste erhalten.
  */
 (function () {
   "use strict";
@@ -22,6 +26,25 @@
       el.classList.contains("elementor-form") &&
       el.getAttribute("name") === "Buchungsformular"
     );
+  }
+
+  // Manche gespiegelten Felder (z. B. Telefon) tragen ein `pattern`, das mit
+  // dem modernen `v`-Flag der Browser-Validierung ungueltig ist und beim
+  // Aufruf von checkValidity()/reportValidity() eine Exception wirft. Solche
+  // ungueltigen Muster entfernen wir, damit die Validierung nicht bricht.
+  function sanitizePatterns(form) {
+    var fields = form.querySelectorAll("[pattern]");
+    for (var i = 0; i < fields.length; i++) {
+      var p = fields[i].getAttribute("pattern");
+      if (p == null) continue;
+      // Moderne Browser kompilieren `pattern` mit dem `v`-Flag. Wirft das,
+      // bricht die gesamte Formular-Validierung – dann Attribut entfernen.
+      try {
+        new RegExp(p, "v");
+      } catch (e) {
+        fields[i].removeAttribute("pattern");
+      }
+    }
   }
 
   function showMessage(form, type, text) {
@@ -67,22 +90,27 @@
     return data;
   }
 
-  function handleSubmit(e) {
-    var form = e.target;
-    if (!isBuchungsformular(form)) return;
+  function submitForm(form) {
+    // Mehrfachversand verhindern.
+    if (form.__ecSubmitting) return;
 
-    // Das Original-Verhalten (Elementor-AJAX / normaler POST) komplett stoppen.
-    e.preventDefault();
-    e.stopPropagation();
-    if (typeof e.stopImmediatePropagation === "function") {
-      e.stopImmediatePropagation();
-    }
+    sanitizePatterns(form);
 
     // HTML5-Pflichtfeldpruefung (inkl. Datenschutz-Checkbox) nutzen.
-    if (typeof form.checkValidity === "function" && !form.checkValidity()) {
-      if (typeof form.reportValidity === "function") form.reportValidity();
+    var valid = true;
+    try {
+      if (typeof form.checkValidity === "function") valid = form.checkValidity();
+    } catch (e) {
+      valid = true; // Bei kaputter Validierung lieber senden als blockieren.
+    }
+    if (!valid) {
+      try {
+        if (typeof form.reportValidity === "function") form.reportValidity();
+      } catch (e) {}
       return;
     }
+
+    form.__ecSubmitting = true;
 
     var button = form.querySelector('button[type="submit"]');
     var textSpan = button && button.querySelector(".elementor-button-text");
@@ -130,6 +158,7 @@
         );
       })
       .finally(function () {
+        form.__ecSubmitting = false;
         if (button) button.disabled = false;
         if (textSpan && originalLabel != null) {
           textSpan.textContent = originalLabel;
@@ -137,6 +166,56 @@
       });
   }
 
-  // Capture-Phase: laeuft vor dem Elementor-Handler am Formular.
-  document.addEventListener("submit", handleSubmit, true);
+  // 1) Button-Klick in der Capture-Phase: laeuft VOR Elementors Klick-Handler
+  //    und verhindert dessen (ins Leere laufenden) admin-ajax.php-Aufruf.
+  document.addEventListener(
+    "click",
+    function (e) {
+      var target = e.target;
+      if (!target || typeof target.closest !== "function") return;
+      var button = target.closest(
+        'button[type="submit"], input[type="submit"]'
+      );
+      if (!button) return;
+      var form = button.form || button.closest("form");
+      if (!isBuchungsformular(form)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === "function") {
+        e.stopImmediatePropagation();
+      }
+      submitForm(form);
+    },
+    true
+  );
+
+  // 2) Natives submit-Event (z. B. Enter-Taste) ebenfalls abfangen.
+  document.addEventListener(
+    "submit",
+    function (e) {
+      var form = e.target;
+      if (!isBuchungsformular(form)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === "function") {
+        e.stopImmediatePropagation();
+      }
+      submitForm(form);
+    },
+    true
+  );
+
+  // Ungueltige pattern-Attribute frueh entschaerfen, damit auch die native
+  // Validierung beim Tippen nicht in eine Exception laeuft.
+  function init() {
+    var forms = document.querySelectorAll('form[name="Buchungsformular"]');
+    for (var i = 0; i < forms.length; i++) sanitizePatterns(forms[i]);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();
