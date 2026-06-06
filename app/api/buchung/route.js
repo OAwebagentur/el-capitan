@@ -127,12 +127,15 @@ export async function POST(request) {
 
   const mailFrom = process.env.MAIL_FROM || process.env.SMTP_USER;
   const mailTo = process.env.MAIL_TO || process.env.SMTP_USER;
+  // Optionale BCC-Adresse(n), kommagetrennt. Aktuell zum Mitlesen/Testen.
+  const mailBcc = (process.env.MAIL_BCC || "").trim();
 
   try {
     const transporter = getTransporter();
     await transporter.sendMail({
       from: `"El Capitan Buchung" <${mailFrom}>`,
       to: mailTo,
+      ...(mailBcc ? { bcc: mailBcc } : {}),
       replyTo: `"${name}" <${email}>`,
       subject: `Buchungsanfrage von ${name}`,
       text: textBody,
