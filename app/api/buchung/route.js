@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { appendToSentMailbox } from "./imap-sent";
 
 // nodemailer braucht die Node.js-Runtime (nicht Edge) und darf nicht
 // statisch vorgerendert werden – jede Anfrage muss live verarbeitet werden.
@@ -79,6 +80,19 @@ function getTransporter() {
   return cachedTransporter;
 }
 
+// Baut die fertige RFC822-Nachricht, ohne sie zu versenden. Damit koennen
+// SMTP-Versand und IMAP-Ablage im Gesendet-Ordner exakt dieselbe Mail nutzen.
+let cachedBuilder = null;
+function getBuilder() {
+  if (!cachedBuilder) {
+    cachedBuilder = nodemailer.createTransport({
+      streamTransport: true,
+      buffer: true,
+    });
+  }
+  return cachedBuilder;
+}
+
 export async function POST(request) {
   let fields;
   try {
@@ -130,17 +144,46 @@ export async function POST(request) {
   // Optionale BCC-Adresse(n), kommagetrennt. Aktuell zum Mitlesen/Testen.
   const mailBcc = (process.env.MAIL_BCC || "").trim();
 
+  const bccList = mailBcc
+    ? mailBcc
+        .split(",")
+        .map((a) => a.trim())
+        .filter(Boolean)
+    : [];
+
+  // Die Nachricht wird OHNE Bcc-Header gebaut: beim Versand als Rohtext wuerde
+  // nodemailer den Header nicht entfernen, und der Empfaenger saehe die
+  // Mitleser-Adresse. Die BCC-Zustellung laeuft stattdessen ueber den Envelope.
+  const message = {
+    from: `"El Capitan Buchung" <${mailFrom}>`,
+    to: mailTo,
+    replyTo: `"${name}" <${email}>`,
+    subject: `Buchungsanfrage von ${name}`,
+    text: textBody,
+    html: htmlBody,
+  };
+
+  let sentCopyRaw = null;
   try {
     const transporter = getTransporter();
-    await transporter.sendMail({
-      from: `"El Capitan Buchung" <${mailFrom}>`,
-      to: mailTo,
-      ...(mailBcc ? { bcc: mailBcc } : {}),
-      replyTo: `"${name}" <${email}>`,
-      subject: `Buchungsanfrage von ${name}`,
-      text: textBody,
-      html: htmlBody,
-    });
+
+    // Einmal bauen, dann als Rohtext versenden – so ist die Kopie im
+    // Gesendet-Ordner dieselbe Mail (gleiche Message-ID) wie beim Empfaenger.
+    const built = await getBuilder().sendMail(message);
+    const envelope = {
+      from: built.envelope.from,
+      to: [...built.envelope.to, ...bccList],
+    };
+    await transporter.sendMail({ raw: built.message, envelope });
+
+    // Fuer die Ablage im Gesendet-Ordner den Bcc-Header ergaenzen, damit im
+    // Postfach nachvollziehbar bleibt, wer die Kopie bekommen hat.
+    sentCopyRaw = bccList.length
+      ? Buffer.concat([
+          Buffer.from(`Bcc: ${bccList.join(", ")}\r\n`),
+          built.message,
+        ])
+      : built.message;
   } catch (err) {
     console.error("Buchungs-Mail konnte nicht gesendet werden:", err);
     return Response.json(
@@ -150,6 +193,16 @@ export async function POST(request) {
           "Die Anfrage konnte nicht versendet werden. Bitte versuchen Sie es später erneut.",
       },
       { status: 502 }
+    );
+  }
+
+  // Kopie in den Gesendet-Ordner legen. Rein informativ: die Anfrage ist
+  // versendet, ein Fehler hier darf die Antwort nicht rot machen.
+  const sentCopy = await appendToSentMailbox(sentCopyRaw);
+  if (!sentCopy.ok) {
+    console.warn(
+      "Kopie im Gesendet-Ordner konnte nicht abgelegt werden:",
+      sentCopy.reason
     );
   }
 
