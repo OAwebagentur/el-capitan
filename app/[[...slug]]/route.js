@@ -31,12 +31,36 @@ export function generateStaticParams() {
 // da die urspruengliche WordPress-"admin-ajax.php" im Mirror nicht existiert.
 const FORM_SCRIPT = '<script src="/buchung-form.js" defer></script>';
 
-function withFormScript(html) {
-  if (!html.includes('name="Buchungsformular"')) return html;
-  if (html.includes("/buchung-form.js")) return html;
+// Das Kontaktpunkt-Tracking kommt auf JEDE Seite: Telefon- und
+// E-Mail-Links stehen ueberall im gespiegelten HTML, nicht nur beim
+// Formular. Es laeuft vor buchung-form.js, damit dort die Sitzungsdaten
+// (window.oaTracking) schon bereitstehen — beide sind `defer`, die
+// Reihenfolge im Dokument entscheidet.
+const TRACKING_SCRIPT = '<script src="/oa-tracking.js" defer></script>';
+
+// Der Ereignis-Endpoint ist kein Geheimnis; er steht als Standard fest im
+// Skript. Nur wenn eine abweichende Adresse konfiguriert ist (Test gegen
+// die lokale Portal-Instanz, Preview), wird sie hier vorangestellt.
+function endpointScript() {
+  const url = process.env.NEXT_PUBLIC_OA_EREIGNIS_ENDPOINT;
+  if (!url) return "";
+  return `<script>window.OA_EREIGNIS_ENDPOINT=${JSON.stringify(url)};</script>`;
+}
+
+function injectScripts(html) {
+  let scripts = "";
+
+  if (!html.includes("/oa-tracking.js")) {
+    scripts += endpointScript() + TRACKING_SCRIPT;
+  }
+  if (html.includes('name="Buchungsformular"') && !html.includes("/buchung-form.js")) {
+    scripts += FORM_SCRIPT;
+  }
+
+  if (!scripts) return html;
   return html.includes("</body>")
-    ? html.replace("</body>", FORM_SCRIPT + "</body>")
-    : html + FORM_SCRIPT;
+    ? html.replace("</body>", scripts + "</body>")
+    : html + scripts;
 }
 
 export async function GET(_request, ctx) {
@@ -46,7 +70,7 @@ export async function GET(_request, ctx) {
   if (typeof html !== "string") {
     return new Response("Not Found", { status: 404 });
   }
-  return new Response(withFormScript(html), {
+  return new Response(injectScripts(html), {
     status: 200,
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });

@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { appendToSentMailbox } from "./imap-sent";
+import { meldeEreignis } from "../../../lib/oa-ereignis";
 
 // nodemailer braucht die Node.js-Runtime (nicht Edge) und darf nicht
 // statisch vorgerendert werden – jede Anfrage muss live verarbeitet werden.
@@ -21,6 +22,22 @@ const FIELDS = [
   { key: "field_a040a6e", label: "Spezielle Wünsche" },
 ];
 
+// Alle eingegebenen Felder unter lesbaren Namen — bekannte Elementor-IDs
+// bekommen ihr Label, unbekannte behalten ihren Schluessel, damit ein
+// spaeter im Formular ergaenztes Feld nicht stillschweigend verschwindet.
+// Vollstaendig inklusive Name, E-Mail, Telefon und Wuenschen: Im Reporting
+// soll die Anfrage selbst lesbar sein. So beauftragt.
+function alleFelder(fields) {
+  const labels = new Map(FIELDS.map((f) => [f.key, f.label]));
+  const out = {};
+  for (const [key, wert] of Object.entries(fields || {})) {
+    const s = wert == null ? "" : String(wert).trim();
+    if (s === "") continue;
+    out[labels.get(key) || key] = s;
+  }
+  return out;
+}
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -31,26 +48,51 @@ function escapeHtml(value) {
 }
 
 // Akzeptiert sowohl JSON als auch klassisches Formular-POST und liefert
-// immer ein flaches Objekt { fieldKey: value }.
+// immer ein flaches Objekt { fieldKey: value }. Zwei Werte gehoeren nicht
+// zu den Formularfeldern und werden herausgetrennt: `oa_kontext` (Herkunft
+// der Sitzung) und `webseite` (Honeypot fuer das OA-Reporting).
 async function readFields(request) {
   const contentType = request.headers.get("content-type") || "";
   const raw = {};
+  let kontext = {};
+  let honeypot = "";
 
   if (contentType.includes("application/json")) {
     const body = await request.json();
+    if (body && typeof body === "object") {
+      if (body.oa_kontext) kontext = body.oa_kontext;
+      if (typeof body.webseite === "string") honeypot = body.webseite;
+    }
     const src = body && typeof body === "object" ? body.form_fields || body : {};
     for (const [k, v] of Object.entries(src)) {
+      if (k === "oa_kontext" || k === "webseite") continue;
       const m = k.match(/^form_fields\[(.+)\]$/);
       raw[m ? m[1] : k] = Array.isArray(v) ? v.join(", ") : v;
     }
   } else {
     const form = await request.formData();
     for (const [k, v] of form.entries()) {
+      if (k === "oa_kontext") {
+        try {
+          kontext = JSON.parse(String(v));
+        } catch {
+          /* ohne Kontext weiter — der Versand haengt nie daran */
+        }
+        continue;
+      }
+      if (k === "webseite") {
+        honeypot = String(v);
+        continue;
+      }
       const m = k.match(/^form_fields\[(.+)\]$/);
       raw[m ? m[1] : k] = v;
     }
   }
-  return raw;
+  return {
+    raw,
+    kontext: kontext && typeof kontext === "object" ? kontext : {},
+    honeypot,
+  };
 }
 
 let cachedTransporter = null;
@@ -95,8 +137,13 @@ function getBuilder() {
 
 export async function POST(request) {
   let fields;
+  let oaKontext = {};
+  let honeypot = "";
   try {
-    fields = await readFields(request);
+    const gelesen = await readFields(request);
+    fields = gelesen.raw;
+    oaKontext = gelesen.kontext;
+    honeypot = gelesen.honeypot;
   } catch {
     return Response.json(
       { success: false, error: "Ungültige Anfrage." },
@@ -205,6 +252,16 @@ export async function POST(request) {
       sentCopy.reason
     );
   }
+
+  // Anfrage ans OA-Reporting melden — ERST hier, wenn die Mail beim Hotel
+  // ist. Scheitert das Reporting, bleibt die Anfrage trotzdem erfolgreich:
+  // `meldeEreignis` wirft nicht, und der Mailversand hat immer Vorrang.
+  await meldeEreignis("formular", {
+    ...oaKontext,
+    seite: oaKontext.seite || "/buchung/",
+    felder: alleFelder(fields),
+    webseite: honeypot,
+  });
 
   return Response.json({ success: true });
 }

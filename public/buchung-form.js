@@ -47,6 +47,28 @@
     }
   }
 
+  // Honeypot fuer das OA-Reporting: ein Feld, das nur ein Bot ausfuellt.
+  // Bewusst KEIN type="hidden" — das ueberspringen Formular-Bots gezielt.
+  // Ist es befuellt, nimmt der OA-Endpoint die Meldung an und schreibt
+  // nichts. Auf den eigenen Mailversand hat es keinen Einfluss.
+  function honeypotEinbauen(form) {
+    if (form.querySelector('input[name="webseite"]')) return;
+    var feld = document.createElement("input");
+    feld.type = "text";
+    feld.name = "webseite";
+    feld.tabIndex = -1;
+    feld.autocomplete = "off";
+    feld.setAttribute("aria-hidden", "true");
+    feld.style.cssText =
+      "position:absolute;left:-9999px;width:1px;height:1px;opacity:0;";
+    form.appendChild(feld);
+  }
+
+  function honeypotWert(form) {
+    var feld = form.querySelector('input[name="webseite"]');
+    return feld ? feld.value : "";
+  }
+
   function showMessage(form, type, text) {
     var box = form.querySelector(".ec-form-message");
     if (!box) {
@@ -120,10 +142,29 @@
     if (textSpan) textSpan.textContent = "Wird gesendet …";
     showMessage(form, "info", "Ihre Anfrage wird gesendet …");
 
+    // Herkunft der Sitzung mitschicken (Kampagne, Landeseite, Referrer),
+    // damit die Anfrage im OA-Reporting derselben Quelle zugeordnet wird
+    // wie ein Telefon- oder WhatsApp-Klick. Gemeldet wird sie serverseitig,
+    // erst nachdem die Mail beim Hotel raus ist. Fehlt oa-tracking.js, geht
+    // das Formular ohne Kontext raus — der Versand haengt nie daran.
+    var oaKontext = null;
+    try {
+      if (
+        window.oaTracking &&
+        typeof window.oaTracking.sitzungsdaten === "function"
+      ) {
+        oaKontext = window.oaTracking.sitzungsdaten();
+      }
+    } catch (e) {}
+
     fetch(ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ form_fields: collectFields(form) }),
+      body: JSON.stringify({
+        form_fields: collectFields(form),
+        oa_kontext: oaKontext,
+        webseite: honeypotWert(form),
+      }),
     })
       .then(function (res) {
         return res
@@ -211,7 +252,10 @@
   // Validierung beim Tippen nicht in eine Exception laeuft.
   function init() {
     var forms = document.querySelectorAll('form[name="Buchungsformular"]');
-    for (var i = 0; i < forms.length; i++) sanitizePatterns(forms[i]);
+    for (var i = 0; i < forms.length; i++) {
+      sanitizePatterns(forms[i]);
+      honeypotEinbauen(forms[i]);
+    }
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
