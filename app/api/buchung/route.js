@@ -253,6 +253,12 @@ export async function POST(request) {
     );
   }
 
+  // Besucherdaten der URSPRUENGLICHEN Anfrage — ohne sie sieht der
+  // OA-Endpoint nur diesen Vercel-Server statt des Besuchers (IP US,
+  // website null, Herkunft immer "direkt"). Lieber null als falsch: fehlt
+  // ein Header, bleibt das Feld einfach weg.
+  const weitergeleitetVon = request.headers.get("x-forwarded-for");
+
   // Anfrage ans OA-Reporting melden — ERST hier, wenn die Mail beim Hotel
   // ist. Scheitert das Reporting, bleibt die Anfrage trotzdem erfolgreich:
   // `meldeEreignis` wirft nicht, und der Mailversand hat immer Vorrang.
@@ -261,6 +267,13 @@ export async function POST(request) {
     seite: oaKontext.seite || "/buchung/",
     felder: alleFelder(fields),
     webseite: honeypot,
+    website: request.headers.get("host"),
+    besucherIp: weitergeleitetVon
+      ? weitergeleitetVon.split(",")[0].trim()
+      : undefined,
+    besucherUserAgent: request.headers.get("user-agent"),
+    besucherLand: request.headers.get("x-vercel-ip-country"),
+    besucherStadt: request.headers.get("x-vercel-ip-city"),
   });
 
   return Response.json({ success: true });
