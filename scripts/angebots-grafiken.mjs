@@ -46,6 +46,10 @@ if (!process.env.EC_FONTS_BEREIT) {
     stdio: "inherit",
     env: { ...process.env, FONTCONFIG_FILE: FCFILE, EC_FONTS_BEREIT: "1" },
   });
+  if (r.error) {
+    console.error("Neustart mit Schriftkonfiguration fehlgeschlagen:", r.error);
+    process.exit(1);
+  }
   process.exit(r.status ?? 1);
 }
 const sharp = require("sharp");

@@ -19,12 +19,17 @@
 
   var ENDPOINT = "/api/buchung/";
 
+  // "Buchungsformular" ist der alte Name desselben Formulars. Er wird noch
+  // erkannt, damit eine Seite, die ein Besucher vor der Umstellung geladen
+  // hat, weiterhin abgesendet werden kann statt still ins Leere zu laufen.
+  var NAMEN = ["Kontaktformular", "Buchungsformular"];
+
   function isKontaktformular(el) {
     return (
       el &&
       el.tagName === "FORM" &&
       el.classList.contains("elementor-form") &&
-      el.getAttribute("name") === "Kontaktformular"
+      NAMEN.indexOf(el.getAttribute("name")) !== -1
     );
   }
 
@@ -251,7 +256,9 @@
   // Ungueltige pattern-Attribute frueh entschaerfen, damit auch die native
   // Validierung beim Tippen nicht in eine Exception laeuft.
   function init() {
-    var forms = document.querySelectorAll('form[name="Kontaktformular"]');
+    var forms = document.querySelectorAll(
+      'form[name="Kontaktformular"], form[name="Buchungsformular"]'
+    );
     for (var i = 0; i < forms.length; i++) {
       sanitizePatterns(forms[i]);
       honeypotEinbauen(forms[i]);

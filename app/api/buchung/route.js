@@ -270,7 +270,9 @@ export async function POST(request) {
   // `meldeEreignis` wirft nicht, und der Mailversand hat immer Vorrang.
   await meldeEreignis("formular", {
     ...oaKontext,
-    seite: oaKontext.seite || "/#kontaktbereich",
+    // Fallback ohne oa-tracking.js: derselbe Wert, den das Tracking meldet
+    // (location.pathname), damit die Anfrage im Reporting bei "/" landet.
+    seite: oaKontext.seite || "/",
     felder: alleFelder(fields),
     webseite: honeypot,
     website: request.headers.get("host"),
