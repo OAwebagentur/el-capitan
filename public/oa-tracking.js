@@ -104,7 +104,7 @@
   sitzungMerken();
 
   /* ────────────────────────────────────────────────────────────────────
-     Der gemeinsame Teil jedes Ereignisses. Wird auch von buchung-form.js
+     Der gemeinsame Teil jedes Ereignisses. Wird auch von kontakt-form.js
      benutzt, damit die Formularanfrage dieselbe Herkunft bekommt wie ein
      Klick.
      ──────────────────────────────────────────────────────────────────── */
@@ -254,7 +254,7 @@
     false
   );
 
-  /* Fuer buchung-form.js: Sitzungsdaten fuer die Formularmeldung. */
+  /* Fuer kontakt-form.js: Sitzungsdaten fuer die Formularmeldung. */
   window.oaTracking = {
     sitzungsdaten: sitzungsdaten,
     meldeEreignis: meldeEreignis,

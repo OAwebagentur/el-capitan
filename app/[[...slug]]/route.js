@@ -26,14 +26,16 @@ export function generateStaticParams() {
   });
 }
 
-// Auf Seiten mit dem Buchungsformular unser eigenes Submit-Skript einklinken.
+// Auf Seiten mit dem Kontaktformular unser eigenes Submit-Skript einklinken.
 // Es faengt das Elementor-Formular ab und sendet die Anfrage an /api/buchung/,
 // da die urspruengliche WordPress-"admin-ajax.php" im Mirror nicht existiert.
-const FORM_SCRIPT = '<script src="/buchung-form.js" defer></script>';
+// Gebucht wird nicht mehr ueber die Seite, sondern ueber dirs21 — das Formular
+// ist seit 03.09.2026 eine reine Kontaktanfrage.
+const FORM_SCRIPT = '<script src="/kontakt-form.js" defer></script>';
 
 // Das Kontaktpunkt-Tracking kommt auf JEDE Seite: Telefon- und
 // E-Mail-Links stehen ueberall im gespiegelten HTML, nicht nur beim
-// Formular. Es laeuft vor buchung-form.js, damit dort die Sitzungsdaten
+// Formular. Es laeuft vor kontakt-form.js, damit dort die Sitzungsdaten
 // (window.oaTracking) schon bereitstehen — beide sind `defer`, die
 // Reihenfolge im Dokument entscheidet.
 const TRACKING_SCRIPT = '<script src="/oa-tracking.js" defer></script>';
@@ -53,7 +55,7 @@ function injectScripts(html) {
   if (!html.includes("/oa-tracking.js")) {
     scripts += endpointScript() + TRACKING_SCRIPT;
   }
-  if (html.includes('name="Buchungsformular"') && !html.includes("/buchung-form.js")) {
+  if (html.includes('name="Kontaktformular"') && !html.includes("/kontakt-form.js")) {
     scripts += FORM_SCRIPT;
   }
 

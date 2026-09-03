@@ -8,18 +8,24 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Mapping der Elementor-Feld-IDs (form_fields[...]) auf lesbare Labels,
-// in der Reihenfolge, in der sie im Buchungsformular erscheinen.
+// in der Reihenfolge, in der sie im Kontaktformular erscheinen.
+//
+// Gebucht wird seit dem 03.09.2026 ausschliesslich ueber dirs21; das Formular
+// auf der Seite ist eine reine Kontaktanfrage. Die alten Buchungsfelder
+// (Erwachsene, Kinder, An-/Abreise, Zimmerkategorie, Angebotscode) sind aus
+// dem Formular entfernt. Ihre Labels bleiben hier stehen, damit eine Anfrage
+// aus einem alten, noch offenen Browser-Tab weiterhin lesbar ankommt.
 const FIELDS = [
   { key: "name", label: "Name" },
   { key: "email", label: "E-Mail" },
   { key: "field_1fd939e", label: "Telefon" },
+  { key: "field_a040a6e", label: "Nachricht" },
   { key: "field_4c0584f", label: "Erwachsene" },
   { key: "field_8b18a8d", label: "Kinder (Anzahl)" },
   { key: "field_8297275", label: "Anreisedatum" },
   { key: "field_db8f6fa", label: "Abreisedatum" },
   { key: "field_c976bd5", label: "Zimmerkategorie" },
   { key: "field_9b92533", label: "Angebotscode" },
-  { key: "field_a040a6e", label: "Spezielle Wünsche" },
 ];
 
 // Alle eingegebenen Felder unter lesbaren Namen — bekannte Elementor-IDs
@@ -181,8 +187,8 @@ export async function POST(request) {
 
   const htmlBody = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#222;max-width:640px;">
-    <h2 style="color:#8a6d3b;margin:0 0 4px;">Neue Buchungsanfrage – El Capitan</h2>
-    <p style="margin:0 0 16px;color:#666;">Über das Buchungsformular auf el-capitan.net eingegangen.</p>
+    <h2 style="color:#8a6d3b;margin:0 0 4px;">Neue Kontaktanfrage – El Capitan</h2>
+    <p style="margin:0 0 16px;color:#666;">Über das Kontaktformular auf el-capitan.net eingegangen. Buchungen laufen über dirs21.</p>
     <table style="border-collapse:collapse;width:100%;font-size:14px;">${htmlRows}</table>
   </div>`;
 
@@ -202,10 +208,10 @@ export async function POST(request) {
   // nodemailer den Header nicht entfernen, und der Empfaenger saehe die
   // Mitleser-Adresse. Die BCC-Zustellung laeuft stattdessen ueber den Envelope.
   const message = {
-    from: `"El Capitan Buchung" <${mailFrom}>`,
+    from: `"El Capitan Kontakt" <${mailFrom}>`,
     to: mailTo,
     replyTo: `"${name}" <${email}>`,
-    subject: `Buchungsanfrage von ${name}`,
+    subject: `Kontaktanfrage von ${name}`,
     text: textBody,
     html: htmlBody,
   };
@@ -232,7 +238,7 @@ export async function POST(request) {
         ])
       : built.message;
   } catch (err) {
-    console.error("Buchungs-Mail konnte nicht gesendet werden:", err);
+    console.error("Kontakt-Mail konnte nicht gesendet werden:", err);
     return Response.json(
       {
         success: false,
@@ -264,7 +270,7 @@ export async function POST(request) {
   // `meldeEreignis` wirft nicht, und der Mailversand hat immer Vorrang.
   await meldeEreignis("formular", {
     ...oaKontext,
-    seite: oaKontext.seite || "/buchung/",
+    seite: oaKontext.seite || "/#kontaktbereich",
     felder: alleFelder(fields),
     webseite: honeypot,
     website: request.headers.get("host"),

@@ -1,5 +1,5 @@
 /*
- * Buchungsformular -> /api/buchung/
+ * Kontaktformular -> /api/buchung/
  *
  * Die gespiegelte Seite enthaelt ein Elementor-Pro-Formular, das urspruenglich
  * an die WordPress-"admin-ajax.php" gepostet haette. Die gibt es hier nicht
@@ -19,12 +19,12 @@
 
   var ENDPOINT = "/api/buchung/";
 
-  function isBuchungsformular(el) {
+  function isKontaktformular(el) {
     return (
       el &&
       el.tagName === "FORM" &&
       el.classList.contains("elementor-form") &&
-      el.getAttribute("name") === "Buchungsformular"
+      el.getAttribute("name") === "Kontaktformular"
     );
   }
 
@@ -140,7 +140,7 @@
 
     if (button) button.disabled = true;
     if (textSpan) textSpan.textContent = "Wird gesendet …";
-    showMessage(form, "info", "Ihre Anfrage wird gesendet …");
+    showMessage(form, "info", "Ihre Nachricht wird gesendet …");
 
     // Herkunft der Sitzung mitschicken (Kampagne, Landeseite, Referrer),
     // damit die Anfrage im OA-Reporting derselben Quelle zugeordnet wird
@@ -181,7 +181,7 @@
           showMessage(
             form,
             "success",
-            "Vielen Dank! Ihre unverbindliche Anfrage wurde versendet. Wir melden uns in Kürze bei Ihnen."
+            "Vielen Dank! Ihre Nachricht wurde versendet. Wir melden uns in Kürze bei Ihnen."
           );
           form.reset();
         } else {
@@ -219,7 +219,7 @@
       );
       if (!button) return;
       var form = button.form || button.closest("form");
-      if (!isBuchungsformular(form)) return;
+      if (!isKontaktformular(form)) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -236,7 +236,7 @@
     "submit",
     function (e) {
       var form = e.target;
-      if (!isBuchungsformular(form)) return;
+      if (!isKontaktformular(form)) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -251,7 +251,7 @@
   // Ungueltige pattern-Attribute frueh entschaerfen, damit auch die native
   // Validierung beim Tippen nicht in eine Exception laeuft.
   function init() {
-    var forms = document.querySelectorAll('form[name="Buchungsformular"]');
+    var forms = document.querySelectorAll('form[name="Kontaktformular"]');
     for (var i = 0; i < forms.length; i++) {
       sanitizePatterns(forms[i]);
       honeypotEinbauen(forms[i]);
