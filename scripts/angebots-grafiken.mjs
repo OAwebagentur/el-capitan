@@ -133,8 +133,8 @@ const kachelB = () => `
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
   <rect x="0" y="0" width="1024" height="312" fill="${BLAU}"/>
   <rect x="0" y="306" width="1024" height="6" fill="${GELB}"/>
-  <rect x="56" y="30" width="${Math.round(versalBreite("NUR 13 MIN. ZUM MOVIE PARK", 24, 1.2) + 48)}" height="46" rx="23" fill="${GELB}"/>
-  <text x="${56 + 24}" y="62" font-family="${H}" font-weight="800" font-size="24" letter-spacing="1.2" fill="${TINTE}">NUR 13 MIN. ZUM MOVIE PARK</text>
+  <rect x="56" y="30" width="${Math.round(versalBreite("NUR 15 MIN. ZUM MOVIE PARK", 24, 1.2) + 48)}" height="46" rx="23" fill="${GELB}"/>
+  <text x="${56 + 24}" y="62" font-family="${H}" font-weight="800" font-size="24" letter-spacing="1.2" fill="${TINTE}">NUR 15 MIN. ZUM MOVIE PARK</text>
   ${zeilen(["Übernachtung im", "Vierbettzimmer", "inkl. Frühstück & Pool"], {
     x: 56, erste: 152, lh: 56, size: 48, max: 600,
   })}
