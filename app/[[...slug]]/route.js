@@ -40,6 +40,12 @@ const FORM_SCRIPT = '<script src="/kontakt-form.js" defer></script>';
 // Reihenfolge im Dokument entscheidet.
 const TRACKING_SCRIPT = '<script src="/oa-tracking.js" defer></script>';
 
+// Meta-Pixel- und GA4-Ereignis am Klick auf einen dirs21-Buchungslink --
+// die Links stehen ueberall im gespiegelten HTML (Kopfzeile, Hero, Menue,
+// Formularhinweis), darum auf JEDER Seite. Siehe
+// public/buchungsklick-tracking.js fuer die Begruendung der Ereignisnamen.
+const BUCHUNGSKLICK_SCRIPT = '<script src="/buchungsklick-tracking.js" defer></script>';
+
 // Der Ereignis-Endpoint ist kein Geheimnis; er steht als Standard fest im
 // Skript. Nur wenn eine abweichende Adresse konfiguriert ist (Test gegen
 // die lokale Portal-Instanz, Preview), wird sie hier vorangestellt.
@@ -57,6 +63,9 @@ function injectScripts(html) {
   }
   if (html.includes('name="Kontaktformular"') && !html.includes("/kontakt-form.js")) {
     scripts += FORM_SCRIPT;
+  }
+  if (!html.includes("/buchungsklick-tracking.js")) {
+    scripts += BUCHUNGSKLICK_SCRIPT;
   }
 
   if (!scripts) return html;
