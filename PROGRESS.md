@@ -2,6 +2,22 @@
 
 Neueste Eintraege zuerst.
 
+## 2026-09-07 (Nachtrag) — Buchungs-Buttons auf dirs21 umgestellt, Header auf 1 Button, deployed
+
+Nachtrag von onur: Buttons fuehrten trotz Buchungshinweis noch zur
+Kontaktanfrage statt zur dirs21-Buchungsstrecke. Hauptziel ist die
+dirs21-Strecke.
+
+| Punkt | Stand |
+|---|---|
+| Befund | 9 Buttons mit `href="#kontaktbereich"`/`/#kontaktbereich"` statt dirs21 gefunden (Kopfzeile x2 zusaetzlich zum Buchungs-Button, "Jetzt Angebot anfragen!", 4× "Jetzt Reservieren", Footer-Banner "Jetzt Anfragen") — trotz Beschriftung, die eine Buchung verspricht, und trotz "Bestpreisgarantie für Direktbucher" direkt daneben. |
+| Kopfzeile | Zweiter Button ("Jetzt Anfragen" -> Kontaktformular) in beiden Kopfzeilen-Varianten (mobil + Desktop) komplett entfernt — es bleibt je Variante nur noch **ein** Button, der zu dirs21 fuehrt ("Direkt buchen" mobil / "Buchung" Desktop). |
+| Uebrige Buttons | 6 Buttons ("Jetzt Angebot anfragen!", 4× "Jetzt Reservieren", Footer "Jetzt Anfragen") von `#kontaktbereich` auf `https://reservation.one.dirs21.de/el-capitan/result` umgestellt. |
+| Bewusst unveraendert | "Erfahren Sie mehr" (Hero, verspricht keine Buchung) sowie die 4 Nav-Menuepunkte "Kontakt" (fuehren zum Formular-Abschnitt, nicht zur Buchung) und der Kontakt-Hinweisblock ("Sie haben eine Frage? … Formular") — das ist die echte Anfrage-Strecke und bleibt bestehen. |
+| Umsetzung | Einmalige, gezielte String-Ersetzung direkt in `content/pages.json` (byte-genauer Mirror, kein HTML-Neubau) — Kopfzeilen-Button-Bloecke per Tiefenzaehlung entfernt, Buchungs-Buttons per `href`+Text-Match umgebogen. Kein Skript im Repo hinterlassen (Einmal-Migration). |
+| Verifiziert | `npm run build` gruen. Im Browser (Desktop + Mobile-Emulation): Kopfzeile zeigt je nur noch 1 Button. Alle 10 verbliebenen `a.elementor-button`-Links per Konsole geprueft — 9× dirs21, 1× "Erfahren Sie mehr" bewusst auf `#kontaktbereich`. `public/buchungsklick-tracking.js` greift automatisch auch auf den neuen/umgebogenen Links (Selektor `a[href*="reservation.one.dirs21.de"]`), keine Anpassung noetig. |
+| Deploy | Committed und auf `main` gepusht -> Vercel-Auto-Deploy ausgeloest (Auftrag von onur). |
+
 ## 2026-09-07 — Halloween-Kachel (Entwurf) + Buchungsklick-Tracking
 
 Auftrag von onur (Sprachnachricht): Meta-Ads-Vorbereitung fuer Halloween-Buchungen
