@@ -46,6 +46,11 @@ const TRACKING_SCRIPT = '<script src="/oa-tracking.js" defer></script>';
 // public/buchungsklick-tracking.js fuer die Begruendung der Ereignisnamen.
 const BUCHUNGSKLICK_SCRIPT = '<script src="/buchungsklick-tracking.js" defer></script>';
 
+// Die Angebotskacheln ("Unsere aktuellen Angebote") sind im Mirror reine
+// <img>, ohne Link -- siehe public/angebotskachel-buchen.js. Nur auf Seiten
+// mit Angebotskacheln einhaengen.
+const ANGEBOTSKACHEL_SCRIPT = '<script src="/angebotskachel-buchen.js" defer></script>';
+
 // Der Ereignis-Endpoint ist kein Geheimnis; er steht als Standard fest im
 // Skript. Nur wenn eine abweichende Adresse konfiguriert ist (Test gegen
 // die lokale Portal-Instanz, Preview), wird sie hier vorangestellt.
@@ -66,6 +71,9 @@ function injectScripts(html) {
   }
   if (!html.includes("/buchungsklick-tracking.js")) {
     scripts += BUCHUNGSKLICK_SCRIPT;
+  }
+  if (html.includes("-angebot-capitan-1x1") && !html.includes("/angebotskachel-buchen.js")) {
+    scripts += ANGEBOTSKACHEL_SCRIPT;
   }
 
   if (!scripts) return html;

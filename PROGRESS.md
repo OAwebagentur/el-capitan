@@ -2,6 +2,26 @@
 
 Neueste Eintraege zuerst.
 
+## 2026-09-08 — Angebotskacheln klickbar, dirs21-Termin vorbelegt, deployed
+
+Nachtrag von onur: Meta-Pixel bleibt wie gebrieft auf el-capitan.net (misst
+den Klick, bevor der Besucher zu dirs21 wechselt — dort gibt es ohnehin
+keinen Zugang, nichts angefasst). Neu: die beiden Angebotsbilder waren reine
+`<img>` ohne Link — ein Angebot wirbt, niemand kann draufklicken.
+
+| Punkt | Stand |
+|---|---|
+| Befund | Beide Bilder in "Unsere aktuellen Angebote" (Halloween + Übernachtung/Pool) waren unverlinkte `<img>`, bestaetigt onurs Verdacht. |
+| Umsetzung | `public/angebotskachel-buchen.js` (neu, laeuft wie kontakt-form.js/oa-tracking.js) — packt jedes Bild in `img[src*="-angebot-capitan-1x1"]` in einen Link zu dirs21 (`target="_blank" rel="noopener"`) und setzt direkt darunter einen sichtbaren "Jetzt buchen"-Button. `content/pages.json` (byte-genauer Mirror) bleibt unangetastet — Entscheidung wie von onur bevorzugt: ein Eingriff, an einer Stelle, uebersteht `npm run scrape`. |
+| Einbindung | `app/[[...slug]]/route.js` haengt das Skript nur auf Seiten mit Angebotskacheln ein (Marker `-angebot-capitan-1x1` im HTML). |
+| Tracking | Beide neuen Links (Bild + Button) tragen dieselbe dirs21-Adresse wie die uebrigen Buchungs-Buttons — `public/buchungsklick-tracking.js` greift automatisch mit (Klick-Listener ist auf `a[href*="reservation.one.dirs21.de"]` delegiert, unabhaengig davon, ob der Link beim Laden schon da war). Verifiziert: Klick auf Bild UND Button loesen je `InitiateCheckout`/`begin_checkout` aus. |
+| dirs21-Parameter | **Geprueft, funktioniert:** dirs21 nimmt `range=<check-in>,<check-out>` und `los=<naechte>` als URL-Parameter an und belegt Check-in/Check-out im Buchungswidget direkt vor — keine Buchung, reiner Seitenaufruf. Getestet mit `?range=2026-10-09,2026-10-10&los=1`, Ergebnis: Formular zeigt "09. Oktober 2026" / "10. Oktober 2026" vorbelegt, Gaeste-Feld bleibt beim Default (2 Erwachsene). |
+| Entscheidung Gaeste-Parameter | Bewusst NICHT gesetzt. Die dirs21-URL akzeptiert zwar auch eine Gaeste-Belegung (`sets`-Parameter mit Zimmer-UUID + `occupancy`), aber das Halloween-Angebot deckt zwei Konstellationen ab ("2 Erw. + 1 Kind" ODER "2 Erw. + 2 Kinder") — eine davon zu erraten waere fuer die Haelfte der Besucher falsch vorbelegt. Datum ist eindeutig, Gaesteanzahl nicht; das Widget startet ohnehin bei 2 Erwachsenen, Besucher passen Kinder/Zimmer selbst im Picker an. |
+| Halloween-Link | `https://reservation.one.dirs21.de/el-capitan/result?range=2026-10-30,2026-10-31&los=1` — Halloween-Wochenende, 1 Nacht (wie im Angebotstext), liegt im Festivalzeitraum (26.09.–08.11.2026). Bezieht sich auf den 2026er Termin; naechstes Jahr vor der Saison neu setzen oder Kachel dann ohnehin ersetzen. |
+| Pool-Kachel-Link | Einfache dirs21-Basis-URL ohne Datum — das Angebot ist nicht saisonal, ein festes Datum waere falsch. |
+| Verifiziert | `npm run build` gruen. Im Browser: beide Bilder verlinkt (Konsole gegengeprueft), Button liegt sichtbar direkt unter jeder Kachel (Positionscheck per Bounding-Box, horizontal zentriert, kein Layout-Bruch), keine Konsolenfehler. Klick-Test fuer beide neuen Linktypen bestaetigt Meta-/GA4-Ereignis, Navigation im Test unterbunden — keine Buchung ausgeloest. |
+| Deploy | Committed und auf `main` gepusht -> Vercel-Auto-Deploy (Auftrag von onur). |
+
 ## 2026-09-07 (Nachtrag) — Buchungs-Buttons auf dirs21 umgestellt, Header auf 1 Button, deployed
 
 Nachtrag von onur: Buttons fuehrten trotz Buchungshinweis noch zur
